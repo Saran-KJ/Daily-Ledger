@@ -50,3 +50,8 @@
 
 
 
+
+## Deployment
+
+To run the app without a computer connection (Offline Mode), you must build and install the Release version.
+See [Deployment Guide](docs/DEPLOYMENT.md) for step-by-step instructions.
