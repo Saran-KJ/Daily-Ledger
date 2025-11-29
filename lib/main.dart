@@ -14,6 +14,7 @@ import 'screens/payments_screen.dart';
 import 'services/api_service.dart';
 import 'services/database_helper.dart';
 import 'services/auth_service.dart';
+import 'services/pdf_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -223,12 +224,122 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _showProfileDialog() async {
+    final user = await AuthService.instance.getCurrentUser();
+    
+    if (!mounted) return;
+    
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to load user profile')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: Colors.deepPurple,
+              radius: 25,
+              child: Text(
+                (user['name'] as String).isNotEmpty 
+                    ? (user['name'] as String)[0].toUpperCase() 
+                    : 'U',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Text('Profile'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Name',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              user['name'] as String? ?? 'N/A',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Email',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              user['email'] as String? ?? 'N/A',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: GestureDetector(
+            onTap: _showProfileDialog,
+            child: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: FutureBuilder<Map<String, dynamic>?>(
+                future: AuthService.instance.getCurrentUser(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data != null) {
+                    final userName = snapshot.data!['name'] as String? ?? 'U';
+                    return Text(
+                      userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                      style: const TextStyle(
+                        color: Colors.deepPurple,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    );
+                  }
+                  return const Icon(Icons.person, color: Colors.deepPurple);
+                },
+              ),
+            ),
+          ),
+        ),
         title: const Text(
           'Dashboard',
           style: TextStyle(color: Colors.white),
@@ -323,6 +434,77 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           if (result == true) {
                             _fetchData();
                           }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      QuickActionButton(
+                        icon: Icons.picture_as_pdf,
+                        label: 'Export PDF',
+                        onTap: () async {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: const Text('Export PDF'),
+                                content: const Text(
+                                  'Choose how you want to export your Daily Ledger report:',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.pop(context);
+                                      try {
+                                        final bytes = await PdfService.generatePdf();
+                                        await PdfService.printPdf(bytes);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Opening share dialog...'),
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        debugPrint('Error sharing PDF: $e');
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('Error sharing PDF: $e')),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: const Text('Share PDF'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.pop(context);
+                                      try {
+                                        final bytes = await PdfService.generatePdf();
+                                        final result = await PdfService.downloadPdf(bytes);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text(result)),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        debugPrint('Error saving PDF: $e');
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('Error saving PDF: $e')),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: const Text('Save to Device'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
                         },
                       ),
                       const SizedBox(height: 12),

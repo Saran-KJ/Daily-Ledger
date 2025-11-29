@@ -1,4 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for printing package -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Permissions for saving PDF files -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    
     <application
         android:label="Daily Ledger"
         android:name="${applicationName}"
